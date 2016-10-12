@@ -1,0 +1,13 @@
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\ConsoleApp.exe.config
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\ConsoleApp.exe
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\ConsoleApp.pdb
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\HtmlAgilityPack.dll
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\obj\Debug\ConsoleApp.exe
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\obj\Debug\ConsoleApp.pdb
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\MongoDB.Bson.dll
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\MongoDB.Driver.Core.dll
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\MongoDB.Driver.dll
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\MongoDB.Bson.xml
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\MongoDB.Driver.xml
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\MongoDB.Driver.Core.xml
+D:\my-project\education\console-app\ConsoleApp\ConsoleApp\obj\Debug\ConsoleApp.csprojResolveAssemblyReference.cache
