@@ -22,9 +22,10 @@ namespace ConsoleApp
         static void Main(string[] args)
         {
 
-            //MongoHelper.FindNews();
-            //Instance.WacheDataDetailzHuizhouHtml("");
-            TimerHnaderAutoScraper = new T.Timer(1000 * 60 * 5);//五分钟执行一次
+            MongoHelper.ExportData();
+            //Instance.WacheDataDetailHuizhouHtml("");
+            //
+            TimerHnaderAutoScraper = new T.Timer(1000 * 60 * 60*4);//4小时执行一次
             TimerHnaderAutoScraper.Enabled = true;
             TimerHnaderAutoScraper.AutoReset = true;
             TimerHnaderAutoScraper.Elapsed += new T.ElapsedEventHandler(Instance.TimerHnaderAutoScraper_Tick);
@@ -37,6 +38,7 @@ namespace ConsoleApp
         }
         void TimerHnaderAutoScraper_Tick(object sender, EventArgs args)
         {
+
             if (!bgw.IsBusy)
                 bgw.RunWorkerAsync();
 
@@ -97,6 +99,7 @@ namespace ConsoleApp
                 Information data = null;
                 foreach (HtmlNode item in nodes)
                 {
+                    var detailshtml = "";
                     data = new Information();
                     HtmlNodeCollection chideNodes = item.ChildNodes;
                     data.newsid = Guid.NewGuid().ToString();
@@ -106,7 +109,8 @@ namespace ConsoleApp
                     data.click_count = chideNodes[7].ChildNodes[4].InnerText.Replace('\n', ' ').Replace('\t', ' ').Replace('\r', ' ').Trim();
                     data.summary = chideNodes[9].InnerText.Replace('\n', ' ').Replace('\t', ' ').Replace('\r', ' ').Trim();
                     data.source_type = 1;
-                    data.details = WacheDataDetailsBoluo(data.href);
+                    data.details = WacheDataDetailsBoluo(data.href, ref detailshtml);
+                    data.detailshtml = detailshtml;
                     data.create_at = DateTime.Now;
                     data.update_at = DateTime.Now;
                     datas.Add(data);
@@ -133,6 +137,7 @@ namespace ConsoleApp
                 Information data = null;
                 foreach (HtmlNode item in nodes)
                 {
+                    var detailshtml = "";
                     data = new Information();
                     HtmlNodeCollection chideNodes = item.ChildNodes;
                     data.newsid = Guid.NewGuid().ToString();
@@ -142,7 +147,8 @@ namespace ConsoleApp
                     data.click_count = "noting";
                     data.summary = chideNodes[1].ChildNodes[0].Attributes[1].Value.Replace('\n', ' ').Replace('\t', ' ').Replace('\r', ' ').Replace("&nbsp;", " ").Trim();
                     data.source_type = 2;
-                    data.details = WacheDataDetailsHuizhou(data.href);
+                    data.details = WacheDataDetailsHuizhou(data.href, ref detailshtml);
+                    data.detailshtml = detailshtml;
                     data.create_at = DateTime.Now;
                     data.update_at = DateTime.Now;
                     datas.Add(data);
@@ -152,20 +158,19 @@ namespace ConsoleApp
             return datas;
         }
 
-        private string WacheDataDetailsBoluoHtml(string url)
+        private string WacheDataDetailsBoluoHtml(string htmlstr)
         {
-            url = "http://www.bljy.cn/cms/html/WSBS/TZGG/201609/02-4352.html";
+           // url = "http://www.bljy.cn/cms/html/WSBS/TZGG/201609/02-4352.html";
             string baseUrl = "http://www.bljy.cn";
-            string strdata = "";
             string xpath = "";
             N.WebClient client = new N.WebClient();
             client.Encoding = Encoding.GetEncoding("gb2312");
-            strdata = client.DownloadString(url);
+            //strdata = client.DownloadString(url);
 
             HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
             //var domain = AppDomain.CurrentDomain.BaseDirectory + "details.html";
-            //doc.Load(domain, System.Text.Encoding.UTF8);
-            doc.LoadHtml(strdata);
+            //doc.Load(domain, System.Text.Encoding.GetEncoding("utf-8"));
+            doc.LoadHtml(htmlstr);
             HtmlNode rootnode = doc.DocumentNode;
 
             //----title
@@ -184,31 +189,32 @@ namespace ConsoleApp
              xpath = "//div[@class='content']";
              nodes = rootnode.SelectNodes(xpath);
              var content = nodes[0].OuterHtml;
+             content = content.Replace("href=\"", "href=\"" + baseUrl);
              var deatils = "<div class='viewbox'>" + title + info + content + "</div>";
-            return "";
+             return deatils;
         }
-        private string WacheDataDetailHuizhouHtml(string url) {
-            url = "http://www.hzjy.edu.cn/detail.aspx?ID=41028";
-            string strdata = "";
+        private string WacheDataDetailHuizhouHtml(string htmlstr)
+        {
+            //url = "http://www.hzjy.edu.cn/detail.aspx?ID=41028";
             string xpath = "";
-            N.WebClient client = new N.WebClient();
-            client.Encoding = Encoding.GetEncoding("utf-8");
-            strdata = client.DownloadString(url);
+            //N.WebClient client = new N.WebClient();
+            //client.Encoding = Encoding.GetEncoding("utf-8");
+           // strdata = client.DownloadString(url);
 
             HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
             //var domain = AppDomain.CurrentDomain.BaseDirectory + "details1.html";
             //doc.Load(domain, System.Text.Encoding.UTF8);
-            doc.LoadHtml(strdata);
+            doc.LoadHtml(htmlstr);
             HtmlNode rootnode = doc.DocumentNode;
 
             //----title
             xpath = "//div[@id='dMain']";
             HtmlNodeCollection nodes = rootnode.SelectNodes(xpath);
-            var title = nodes[0].OuterHtml;
-            return "";
+            var content = nodes[0].OuterHtml;
+            return content;
         }
 
-        private Details WacheDataDetailsBoluo(string url)
+        private Details WacheDataDetailsBoluo(string url,ref string htmlstr)
         {
             //url = "http://www.bljy.cn/cms/html/WSBS/TZGG/201609/02-4352.html";
             string baseUrl = "http://www.bljy.cn";
@@ -240,9 +246,11 @@ namespace ConsoleApp
             xpath = "//div[@class='content']";
             nodes = rootnode.SelectNodes(xpath);
             var content = NoHTML(nodes[0].InnerText);
+           htmlstr= WacheDataDetailsBoluoHtml(strdata);
+
             return new Details { title = title, info = info, content = content };
         }
-        private Details WacheDataDetailsHuizhou(string url)
+        private Details WacheDataDetailsHuizhou(string url,ref string htmlstr)
         {
 
             //url = "http://www.hzjy.edu.cn/detail.aspx?ID=40674";
@@ -273,6 +281,7 @@ namespace ConsoleApp
             xpath = "//div[@id='DivContent']";
             nodes = rootnode.SelectNodes(xpath);
             var content = nodes[0].InnerText.Replace("&nbsp;", "").Replace("&mdash;", "—").Trim();
+            htmlstr = WacheDataDetailHuizhouHtml(strdata);
             return new Details { title = title, info = info, content = content };
         }
 

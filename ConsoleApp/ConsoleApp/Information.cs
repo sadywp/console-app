@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MongoDB.Bson;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,7 @@ namespace ConsoleApp
 {
    public class Information
     {
+       public ObjectId id { get; set; }
         /// <summary>
         /// 编号
         /// </summary>
@@ -38,6 +40,7 @@ namespace ConsoleApp
         public int source_type { get; set; }
 
         public Details details { get; set; }
+        public string detailshtml { get; set; }
 
         public DateTime create_at { get; set; }
 

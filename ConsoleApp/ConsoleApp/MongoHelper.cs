@@ -13,6 +13,7 @@ namespace ConsoleApp
         /// 数据库连接
         /// </summary>
         private const string conn = "mongodb://127.0.0.1:27017";
+        private const string connremote = "mongodb://120.77.16.167:27017";
         /// <summary>
         /// 指定的数据库
         /// </summary>
@@ -35,7 +36,17 @@ namespace ConsoleApp
             return data;
 
         }
+        public static void AddTest()
+        {
+            var data = new user();
+            data.name = "tttttt";
+            data.laset = "tttttttttttttttddddddddd";
+            var client = new MongoClient(conn);
+            var database = client.GetDatabase(dbName);
+            var collection = database.GetCollection<user>(tbName);
+            collection.InsertOne(data);
 
+        }
         public static void AddNews(List<Information> models)
         {
             var addModels = new List<Information>();
@@ -49,5 +60,20 @@ namespace ConsoleApp
             var collection = database.GetCollection<Information>(tbName);
             collection.InsertMany(addModels);
         }
+
+        public static void ExportData()
+        {
+            var data = FindNews();
+            var client = new MongoClient(connremote);
+            var database = client.GetDatabase(dbName);
+            var collection = database.GetCollection<Information>(tbName);
+            collection.InsertMany(data);
+
+        }
+    }
+    public class user
+    {
+        public string name { get; set; }
+        public string laset{get;set;}
     }
 }
