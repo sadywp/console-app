@@ -19,13 +19,21 @@ namespace ConsoleApp
         static BackgroundWorker bgw = new BackgroundWorker();
         static Program Instance = new Program();
         static string sourcetype = string.Empty;
+        static bool IsExcute=false;
+        //每天执行6次
+        static string[] TimeArray = new string[6];
         static void Main(string[] args)
         {
-
-            MongoHelper.ExportData();
+            TimeArray[0] = "00:00";
+            TimeArray[0] = "04:00";
+            TimeArray[0] = "08:00";
+            TimeArray[0] = "12:00";
+            TimeArray[0] = "16:00";
+            TimeArray[0] = "20:00";
+            //MongoHelper.ExportData();
             //Instance.WacheDataDetailHuizhouHtml("");
             //
-            TimerHnaderAutoScraper = new T.Timer(1000 * 60 * 60*4);//4小时执行一次
+            TimerHnaderAutoScraper = new T.Timer(1000 * 60 * 1);//一分钟执行一次
             TimerHnaderAutoScraper.Enabled = true;
             TimerHnaderAutoScraper.AutoReset = true;
             TimerHnaderAutoScraper.Elapsed += new T.ElapsedEventHandler(Instance.TimerHnaderAutoScraper_Tick);
@@ -45,51 +53,111 @@ namespace ConsoleApp
         }
         private void bgw_DoWork(object sender, DoWorkEventArgs e)
         {
-            CatchData(sourcetype);
-            if (sourcetype == "boluo") sourcetype = "huizhou";
-            else sourcetype = "boluo";
+            var nowTime = DateTime.Now.ToString("hh:mm");
+            var ishave = TimeArray.Select(p => p.Equals(nowTime)).FirstOrDefault();
+            if (!IsExcute) {
+                CatchData(sourcetype);
+                IsExcute = true;
+            }
+            if (ishave)
+            {
+                CatchData(sourcetype);
+            }
+            //Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm"));
+            // CatchData(sourcetype);
         }
         private void CatchData(string sourceTypeStr)
         {
             Console.WriteLine(sourceTypeStr);
             List<Information> datas = null;
+            string msg = "";
+            string msg_mongo = "";
+            string typrStr = "";
 
-            datas = GetWebData(sourceTypeStr);
-            if (datas != null && datas.Count > 0)
+            if (sourcetype == "boluo") typrStr = "博罗新闻";
+            else typrStr = "惠州新闻";
+
+            for (int i = 1; i <= 5; i++)
             {
-                MongoHelper.AddNews(datas);
+                Console.WriteLine("获取" + typrStr + " 第" + i + "次尝试！" + DateTime.Now.ToString());
+                datas = GetWebData(sourceTypeStr, ref msg);
+                if (datas != null && datas.Count > 0)
+                {
+
+                    Console.WriteLine("成功解析" + typrStr+" " + datas.Count + "条" + DateTime.Now.ToString());
+
+                    MongoHelper.AddNews(datas, sourcetype, ref msg_mongo);
+                    Console.WriteLine(typrStr +" "+ msg_mongo + DateTime.Now.ToString());
+                    break;
+                }
+            }
+            if (sourcetype == "boluo") sourcetype = "huizhou";
+            else sourcetype = "boluo";
+            if (sourcetype == "boluo") typrStr = "博罗新闻";
+            else typrStr = "惠州新闻";
+
+            for (int i = 1; i <= 5; i++)
+            {
+                Console.WriteLine("获取" + typrStr + " 第" + i + "次尝试！" + DateTime.Now.ToString());
+                datas = GetWebData(sourceTypeStr, ref msg);
+                if (datas != null && datas.Count > 0)
+                {
+
+                    Console.WriteLine("成功解析" + typrStr+" " + datas.Count + "条" + DateTime.Now.ToString());
+                    MongoHelper.AddNews(datas, sourcetype, ref msg_mongo);
+                    Console.WriteLine(typrStr +" "+ msg_mongo + DateTime.Now.ToString());
+
+                    break;
+                }
             }
 
-
+            if (sourcetype == "boluo") sourcetype = "huizhou";
+            else sourcetype = "boluo";
         }
-        private List<Information> GetWebData(string datatype)
+        private List<Information> GetWebData(string datatype, ref string msg)
         {
             List<Information> data = null;
             switch (datatype)
             {
                 case "boluo":
-                    data = WacheDataboluo();
+                    data = WacheDataboluo(ref msg);
                     break;
                 case "huizhou":
 
-                    data = WacheDataHuizhou();
+                    data = WacheDataHuizhou(ref msg);
                     break;
                 default:
-                    data = WacheDataboluo();
+                    data = WacheDataboluo(ref msg);
                     break;
             }
             return data;
         }
-        private List<Information> WacheDataboluo()
+        private List<Information> WacheDataboluo(ref string msg)
         {
             List<Information> datas = new List<Information>();
             N.WebClient client = new N.WebClient();
             client.Encoding = Encoding.GetEncoding("gb2312");
-            string strdata = client.DownloadString("http://www.bljy.cn/cms/html/WSBS/TZGG/");
+            string strdata = "";
+            try
+            {
+                strdata = client.DownloadString("http://www.bljy.cn/cms/html/WSBS/TZGG/");
+                msg = "获取博罗新闻列表成功！";
+            }
+            catch (Exception ex)
+            {
+                msg = ex.Message;
+                return null;
+            }
+
 
             HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
             doc.LoadHtml(strdata);
             HtmlNode rootnode = doc.DocumentNode;
+            if (rootnode == null)
+            {
+                msg = "解析博罗新闻列表失败";
+                return null;
+            }
             string xapthstr = "//ul[@class='e2']/li";
             HtmlNodeCollection nodes = rootnode.SelectNodes(xapthstr);
 
@@ -113,21 +181,40 @@ namespace ConsoleApp
                     data.detailshtml = detailshtml;
                     data.create_at = DateTime.Now;
                     data.update_at = DateTime.Now;
-                    datas.Add(data);
+                    if (data.details != null)
+                    {
+                        datas.Add(data);
+                    }
                 }
             }
             return datas;
         }
-        private List<Information> WacheDataHuizhou()
+        private List<Information> WacheDataHuizhou(ref string msg)
         {
             List<Information> datas = new List<Information>();
             N.WebClient client = new N.WebClient();
             client.Encoding = Encoding.GetEncoding("utf-8");
-            string strdata = client.DownloadString(@"http://www.hzjy.edu.cn/List.aspx?nid=1");
+            string strdata = "";
+            try
+            {
+                strdata = client.DownloadString(@"http://www.hzjy.edu.cn/List.aspx?nid=1");
+                msg = "获取惠州新闻列表成功！";
+            }
+            catch (Exception ex)
+            {
+                msg = ex.Message;
+                return null;
+            }
+
 
             HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
             doc.LoadHtml(strdata);
             HtmlNode rootnode = doc.DocumentNode;
+            if (rootnode == null)
+            {
+                msg = "解析惠州新闻列表失败!";
+                return null;
+            }
             string xapthstr = "//table[@class='liTable']/tr";
             HtmlNodeCollection nodes = rootnode.SelectNodes(xapthstr);
 
@@ -151,7 +238,10 @@ namespace ConsoleApp
                     data.detailshtml = detailshtml;
                     data.create_at = DateTime.Now;
                     data.update_at = DateTime.Now;
-                    datas.Add(data);
+                    if (data.details != null)
+                    {
+                        datas.Add(data);
+                    }
                 }
 
             }
@@ -160,7 +250,7 @@ namespace ConsoleApp
 
         private string WacheDataDetailsBoluoHtml(string htmlstr)
         {
-           // url = "http://www.bljy.cn/cms/html/WSBS/TZGG/201609/02-4352.html";
+            // url = "http://www.bljy.cn/cms/html/WSBS/TZGG/201609/02-4352.html";
             string baseUrl = "http://www.bljy.cn";
             string xpath = "";
             N.WebClient client = new N.WebClient();
@@ -179,19 +269,19 @@ namespace ConsoleApp
             var title = nodes[0].OuterHtml;
             //----info
             xpath = "//div[@class='info']";
-             nodes = rootnode.SelectNodes(xpath);
-             var info = nodes[0].OuterHtml;
-             var count = nodes[0].ChildNodes[9].Attributes[0].Value;
-             count = client.DownloadString(baseUrl + count);//document.write('975');\r\n
-             count = count.Substring(count.IndexOf("'") + 1, count.LastIndexOf("'") - count.IndexOf("'") - 1);
-             info = info.Replace("次", count + "次");
-             //----content
-             xpath = "//div[@class='content']";
-             nodes = rootnode.SelectNodes(xpath);
-             var content = nodes[0].OuterHtml;
-             content = content.Replace("href=\"", "href=\"" + baseUrl);
-             var deatils = "<div class='viewbox'>" + title + info + content + "</div>";
-             return deatils;
+            nodes = rootnode.SelectNodes(xpath);
+            var info = nodes[0].OuterHtml;
+            var count = nodes[0].ChildNodes[9].Attributes[0].Value;
+            count = client.DownloadString(baseUrl + count);//document.write('975');\r\n
+            count = count.Substring(count.IndexOf("'") + 1, count.LastIndexOf("'") - count.IndexOf("'") - 1);
+            info = info.Replace("次", count + "次");
+            //----content
+            xpath = "//div[@class='content']";
+            nodes = rootnode.SelectNodes(xpath);
+            var content = nodes[0].OuterHtml;
+            content = content.Replace("href=\"", "href=\"" + baseUrl);
+            var deatils = "<div class='viewbox'>" + title + info + content + "</div>";
+            return deatils;
         }
         private string WacheDataDetailHuizhouHtml(string htmlstr)
         {
@@ -199,7 +289,7 @@ namespace ConsoleApp
             string xpath = "";
             //N.WebClient client = new N.WebClient();
             //client.Encoding = Encoding.GetEncoding("utf-8");
-           // strdata = client.DownloadString(url);
+            // strdata = client.DownloadString(url);
 
             HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
             //var domain = AppDomain.CurrentDomain.BaseDirectory + "details1.html";
@@ -214,7 +304,7 @@ namespace ConsoleApp
             return content;
         }
 
-        private Details WacheDataDetailsBoluo(string url,ref string htmlstr)
+        private Details WacheDataDetailsBoluo(string url, ref string htmlstr)
         {
             //url = "http://www.bljy.cn/cms/html/WSBS/TZGG/201609/02-4352.html";
             string baseUrl = "http://www.bljy.cn";
@@ -222,14 +312,23 @@ namespace ConsoleApp
             string xpath = "";
             N.WebClient client = new N.WebClient();
             client.Encoding = Encoding.GetEncoding("gb2312");
-            strdata = client.DownloadString(url);
+            try
+            {
+                strdata = client.DownloadString(url);
+            }
+            catch (Exception ex)
+            {
+
+                return null;
+            }
+
 
             HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
             //var domain = AppDomain.CurrentDomain.BaseDirectory + "details.html";
             //doc.Load(domain, System.Text.Encoding.UTF8);
             doc.LoadHtml(strdata);
             HtmlNode rootnode = doc.DocumentNode;
-
+            if (rootnode == null) return null;
             //----title
             xpath = "//div[@class='title']";
             HtmlNodeCollection nodes = rootnode.SelectNodes(xpath);
@@ -239,18 +338,27 @@ namespace ConsoleApp
             nodes = rootnode.SelectNodes(xpath);
             var info = NoHTML(nodes[0].InnerText);
             var count = nodes[0].ChildNodes[9].Attributes[0].Value;
-            count = client.DownloadString(baseUrl + count);//document.write('975');\r\n
-            count = count.Substring(count.IndexOf("'") + 1, count.LastIndexOf("'") - count.IndexOf("'") - 1);
+            try
+            {
+                count = client.DownloadString(baseUrl + count);//document.write('975');\r\n
+                count = count.Substring(count.IndexOf("'") + 1, count.LastIndexOf("'") - count.IndexOf("'") - 1);
+            }
+            catch (Exception ex)
+            {
+
+                count = "0";
+            }
+
             info = info.Replace("次", count + "次");
             //----content
             xpath = "//div[@class='content']";
             nodes = rootnode.SelectNodes(xpath);
             var content = NoHTML(nodes[0].InnerText);
-           htmlstr= WacheDataDetailsBoluoHtml(strdata);
+            htmlstr = WacheDataDetailsBoluoHtml(strdata);
 
             return new Details { title = title, info = info, content = content };
         }
-        private Details WacheDataDetailsHuizhou(string url,ref string htmlstr)
+        private Details WacheDataDetailsHuizhou(string url, ref string htmlstr)
         {
 
             //url = "http://www.hzjy.edu.cn/detail.aspx?ID=40674";
@@ -259,14 +367,23 @@ namespace ConsoleApp
             string xpath = "";
             N.WebClient client = new N.WebClient();
             client.Encoding = Encoding.GetEncoding("utf-8");
-            strdata = client.DownloadString(url);
+            try
+            {
+                strdata = client.DownloadString(url);
+            }
+            catch (Exception ex)
+            {
+
+                return null;
+            }
+
 
             HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
             //var domain = AppDomain.CurrentDomain.BaseDirectory + "details1.html";
             //doc.Load(domain, System.Text.Encoding.UTF8);
             doc.LoadHtml(strdata);
             HtmlNode rootnode = doc.DocumentNode;
-
+            if (rootnode == null) return null;
             //----title
             xpath = "//span[@id='Main_labTitle']";
             HtmlNodeCollection nodes = rootnode.SelectNodes(xpath);

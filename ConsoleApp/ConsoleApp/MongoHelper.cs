@@ -27,13 +27,28 @@ namespace ConsoleApp
         /// </summary>
         /// <param name="key">对象的ID值</param>
         /// <returns>存在则返回指定的对象,否则返回Null</returns>
-        public static List<Information> FindNews()
+        public static List<Information> FindNews(string type,ref string msg)
         {
-            var client = new MongoClient(conn);
-            var database = client.GetDatabase(dbName);
-            var collection = database.GetCollection<Information>(tbName);
-            var data = collection.AsQueryable().ToList();
-            return data;
+            int sourceType = 1;
+            if (type == "boluo") sourceType = 1;
+            else sourceType = 2;
+            try
+            {
+                var client = new MongoClient(conn);
+                var database = client.GetDatabase(dbName);
+                var collection = database.GetCollection<Information>(tbName);
+                var data = collection.AsQueryable().Where(p => p.source_type == sourceType).ToList();
+
+                msg = "数据库查询成功 " + data .Count+ " 条";
+                return data;
+
+            }
+            catch (Exception ex)
+            {
+                msg = ex.Message;
+                return null;
+            }
+            
 
         }
         public static void AddTest()
@@ -47,23 +62,50 @@ namespace ConsoleApp
             collection.InsertOne(data);
 
         }
-        public static void AddNews(List<Information> models)
+        public static void AddNews(List<Information> models,string type,ref string msg)
         {
+            string msg_query = "";
             var addModels = new List<Information>();
-            var oldModels = FindNews();
-            addModels = models.Except(oldModels).ToList();
-            if (addModels == null || addModels.Count <= 0)
+            var oldModels = FindNews(type, ref msg_query);
+            if (oldModels != null && oldModels.Count > 0)
+            {
+                foreach (var item in models)
+                {
+                    var itemModel = oldModels.Where(p => p.title == item.title).FirstOrDefault();
+                    if (itemModel == null) addModels.Add(item);
+                }
+            }
+            else
+            {
+                msg = msg_query;
                 return;
+            }
+            if (addModels == null || addModels.Count <= 0)
+            {
+                msg = msg_query + " 数据库入库成功"  + "0 条";
+                return;
+            }
+            try
+            {
+                var client = new MongoClient(conn);
+                var database = client.GetDatabase(dbName);
+                var collection = database.GetCollection<Information>(tbName);
+                collection.InsertMany(addModels);
 
-            var client = new MongoClient(conn);
-            var database = client.GetDatabase(dbName);
-            var collection = database.GetCollection<Information>(tbName);
-            collection.InsertMany(addModels);
+                msg = msg_query + " 数据库入库成功" + addModels.Count+"条";
+            }
+            catch (Exception ex)
+            {
+
+                msg = ex.Message;
+            }
+           
         }
 
         public static void ExportData()
         {
-            var data = FindNews();
+            string msg = "";
+            var data = FindNews("boluo", ref msg);
             var client = new MongoClient(connremote);
             var database = client.GetDatabase(dbName);
             var collection = database.GetCollection<Information>(tbName);

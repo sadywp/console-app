@@ -10,4 +10,3 @@ D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\MongoDB.Driv
 D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\MongoDB.Bson.xml
 D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\MongoDB.Driver.xml
 D:\my-project\education\console-app\ConsoleApp\ConsoleApp\bin\Debug\MongoDB.Driver.Core.xml
-D:\my-project\education\console-app\ConsoleApp\ConsoleApp\obj\Debug\ConsoleApp.csprojResolveAssemblyReference.cache
